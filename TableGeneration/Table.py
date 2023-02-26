@@ -379,6 +379,8 @@ class Table:
                     # 第一行设置为中英文
                     text_type = random.choice(['c', 'e'])
                 txt = self.generate_random_text(text_type)
+                if row_span_value > 1 or col_span_value > 1:
+                    txt = 'spanning_cell_' + txt # label spanning_cell 
                 if self.cell_box_type == 'text':
                     txt = '<span id=' + str(idcounter) + '>' + txt + ' </span>'
                 idcounter += 1
