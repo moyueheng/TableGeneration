@@ -187,11 +187,10 @@ class GenerateTable:
         rotate_center = ((xmin + xmax) >> 1, (ymin + ymax) >> 1)
         xmin = max(0, xmin - random.randint(20, 50))
         ymin = max(0, ymin - random.randint(20, 50))
-        xmax = min(w, xmax + random.randint(50, 150))
-        ymax = min(h, ymax + random.randint(100, 200))
+        xmax = min(w, xmax + random.randint(110, 120))
+        ymax = min(h, ymax + random.randint(100, 120))
         # TODO 旋转时在这个的地方做的
-        # rotate_ = random.randint(0, 1)
-        rotate_ = random.random() + 0.5
+        rotate_ = random.uniform(-1, 1)
         im = im.rotate(
             rotate_,
             center=rotate_center,
