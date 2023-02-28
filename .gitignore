@@ -21,3 +21,4 @@ driver/
 
 # tmp file
 tmp*
+gen.sh

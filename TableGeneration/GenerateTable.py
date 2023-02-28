@@ -3,7 +3,7 @@ import os
 import sys
 import random
 import string
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageFilter
 from io import BytesIO
 from tqdm import tqdm
 import numpy as np
@@ -36,7 +36,7 @@ class GenerateTable:
         brower="chrome",
         brower_width=1920,
         brower_height=1920,
-        backgroud='gaussian_noise',
+        backgroud="gaussian_noise",
     ):
         self.output = output  # wheter to store images separately or not
         self.ch_dict_path = ch_dict_path
@@ -80,7 +80,7 @@ class GenerateTable:
                 continue
 
             im, html_content, structure, contens, border = out
-            im, contens = self.clip_white(im, contens)
+            im, contens = self.clip_white(im, contens)  # TODO : 我应该对这个地方做裁减
 
             # randomly select a name of length=20 for file.
             output_file_name = "".join(
@@ -184,15 +184,35 @@ class GenerateTable:
         ymin = bbox[:, :, 1].min()
         xmax = bbox[:, :, 0].max()
         ymax = bbox[:, :, 1].max()
+        rotate_center = ((xmin + xmax) >> 1, (ymin + ymax) >> 1)
+        xmin = max(0, xmin - random.randint(20, 50))
+        ymin = max(0, ymin - random.randint(20, 50))
+        xmax = min(w, xmax + random.randint(50, 150))
+        ymax = min(h, ymax + random.randint(100, 200))
+        # TODO 旋转时在这个的地方做的
+        # rotate_ = random.randint(0, 1)
+        rotate_ = random.random() + 0.5
+        im = im.rotate(
+            rotate_,
+            center=rotate_center,
+            expand=True,
+            fillcolor=(255, 255, 255),
+        )
 
-        xmin = max(0, xmin - random.randint(0, 10))
-        ymin = max(0, ymin - random.randint(0, 10))
-        xmax = min(w, xmax + random.randint(2, 10))
-        ymax = min(h, ymax + random.randint(2, 10))
+        # TODO: 背景模糊
+        if self.backgroud == "gaussian_noise":
+            im = GenerateTable.add_gaussian_noise_background(im)
+        
+        # TODO: 在这里加一点模糊
+        gaussian_filter = ImageFilter.GaussianBlur(radius=1.5)
+        im = im.filter(gaussian_filter)
         im = im.crop([xmin, ymin, xmax, ymax])
 
         bbox[:, :, 0] -= xmin
         bbox[:, :, 1] -= ymin
+        # FIXME 这个地方根据旋转调整的, 并没有严格的公式证明
+        bbox[:, :, 0] += int(rotate_ * 18)
+        bbox[:, :, 1] += int(rotate_ * 18)
         for item, box in zip(bboxes, bbox):
             item[2] = box.tolist()
         return im, bboxes
@@ -227,11 +247,10 @@ class GenerateTable:
             )
 
         screenshot = self.driver.get_screenshot_as_png()
-        # backgourd
-        if self.backgroud == 'gaussian_noise':
-            im = GenerateTable.add_gaussian_noise_background(screenshot)
+        screenshot = Image.open(BytesIO(screenshot))
+        # TODO:对图片进行倾斜处理
 
-        im = im.crop((0, 0, max_width, max_height))
+        im = screenshot.crop((0, 0, max_width, max_height))
         return im, contens
 
     def close(self):
@@ -253,13 +272,11 @@ class GenerateTable:
 
         return Image.fromarray(image).convert("RGBA")
 
-
     @staticmethod
     def add_gaussian_noise_background(screenshot):
         # 3. 使用浏览器的截图功能将整个页面截取下来，然后使用Pillow库中的Image.open函数打开截图，并将截图裁剪为整个页面窗口的大小。TODO: 图片的自然场景化
-
-        screenshot = Image.open(BytesIO(screenshot))
-        background = GenerateTable.gaussian_noise(*screenshot.size)
+        h, w = screenshot.size
+        background = GenerateTable.gaussian_noise(w, h)
 
         # 将图片进行二值化
         screenshot = ImageOps.grayscale(screenshot)
