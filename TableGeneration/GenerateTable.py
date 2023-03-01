@@ -187,8 +187,8 @@ class GenerateTable:
         rotate_center = ((xmin + xmax) >> 1, (ymin + ymax) >> 1)
         xmin = max(0, xmin - random.randint(20, 50))
         ymin = max(0, ymin - random.randint(20, 50))
-        xmax = min(w, xmax + random.randint(110, 120))
-        ymax = min(h, ymax + random.randint(100, 120))
+        xmax = min(w, xmax + random.randint(50, 80))
+        ymax = min(h, ymax + random.randint(50, 80))
         # TODO 旋转时在这个的地方做的
         rotate_ = random.uniform(-1, 1)
         im = im.rotate(
@@ -201,7 +201,7 @@ class GenerateTable:
         # TODO: 背景模糊
         if self.backgroud == "gaussian_noise":
             im = GenerateTable.add_gaussian_noise_background(im)
-        
+
         # TODO: 在这里加一点模糊
         gaussian_filter = ImageFilter.GaussianBlur(radius=1.5)
         im = im.filter(gaussian_filter)
@@ -210,11 +210,37 @@ class GenerateTable:
         bbox[:, :, 0] -= xmin
         bbox[:, :, 1] -= ymin
         # FIXME 这个地方根据旋转调整的, 并没有严格的公式证明
-        bbox[:, :, 0] += int(rotate_ * 18)
-        bbox[:, :, 1] += int(rotate_ * 18)
+
+        bbox[:, :, 0] += abs(int(rotate_ * 20))
+        bbox[:, :, 1] += abs(int(rotate_ * 20))
+        print(bbox[:, :, 0].min(), bbox[:, :, 1].min())
         for item, box in zip(bboxes, bbox):
             item[2] = box.tolist()
         return im, bboxes
+
+    @staticmethod
+    def get_rotate_adjust(x1, x2, y1, y2, rotate_center, rotate_):
+        import math
+        # 将检测框的中心点转换为旋转后的坐标系
+        center_x = (x1 + x2) / 2 - rotate_center[0]
+        center_y = (y1 + y2) / 2 - rotate_center[1]
+
+        # 计算旋转后的中心点坐标
+        cos = math.cos(math.radians(rotate_))
+        sin = math.sin(math.radians(rotate_))
+        new_center_x = center_x * cos - center_y * sin
+        new_center_y = center_x * sin + center_y * cos
+
+        # 将旋转后的中心点坐标转换回原始坐标系
+        new_center_x += rotate_center[0]
+        new_center_y += rotate_center[1]
+
+        # 计算旋转后的检测框的左上角和右下角坐标
+        new_x1 = new_center_x - (x2 - x1) / 2
+        new_y1 = new_center_y - (y2 - y1) / 2
+        new_x2 = new_center_x + (x2 - x1) / 2
+        new_y2 = new_center_y + (y2 - y1) / 2
+        return 
 
     def html_to_img(self, html_content, id_count):
         """converts html to image"""
